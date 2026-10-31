@@ -32,12 +32,17 @@ jobs:
         export SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
         make O=out angelica_defconfig
-        # Kita simpan log build ke file build.log, kalau gagal kita print 50 baris terakhir
         make O=out -j$(nproc) 2>&1 | tee build.log || (echo "=== ERROR TERJADI, 50 BARIS TERAKHIR ===" && tail -n 50 build.log && exit 1)
 
-    - name: Upload Kernel Image
-      if: success()
+    - name: CEK ISI FOLDER BOOT
+      run: |
+        echo "=== ISI FOLDER out/arch/arm/boot/ ==="
+        ls -la out/arch/arm/boot/
+        echo "=== CARI FILE IMAGE ==="
+        find out/arch/arm/boot/ -name "*Image*" -o -name "zImage*"
+
+    - name: Upload Semua File Boot
       uses: actions/upload-artifact@v4
       with:
-        name: Image.gz-dtb
-        path: out/arch/arm/boot/Image.gz-dtb
+        name: Boot-Files
+        path: out/arch/arm/boot/*
