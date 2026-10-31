@@ -20,13 +20,13 @@ jobs:
 
     - name: Download Toolchain
       run: |
-        git clone --depth=1 https://github.com/arter97/arm-linux-gnueabi-4.9 toolchain
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 toolchain
 
     - name: Build Kernel
       run: |
         export ARCH=arm
         export SUBARCH=arm
-        export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-gnueabi-
+        export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
         make O=out angelica_defconfig
         make O=out -j$(nproc)
 
