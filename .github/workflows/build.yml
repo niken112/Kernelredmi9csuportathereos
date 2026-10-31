@@ -35,17 +35,38 @@ jobs:
         # 1. Load config
         make O=out angelica_defconfig
         
-        # 2. Compile Image.gz (Kernel)
-        make O=out -j$(nproc) Image.gz 2>&1 | tee build_kernel.log || (echo "=== ERROR KERNEL ===" && tail -n 50 build_kernel.log && exit 1)
-        
-        # 3. Compile DTB (Hardware Tree)
-        make O=out -j$(nproc) dtbs 2>&1 | tee build_dtbs.log || (echo "=== ERROR DTBS ===" && tail -n 50 build_dtbs.log && exit 1)
+        # 2. Compile Kernel & DTB sekaligus
+        make O=out -j$(nproc) 2>&1 | tee build.log || (echo "=== ERROR BUILD ===" && tail -n 50 build.log && exit 1)
 
-        # 4. Gabungin Image.gz + DTB jadi Image.gz-dtb
-        cat out/arch/arm/boot/Image.gz out/arch/arm/boot/dts/*.dtb > out/arch/arm/boot/Image.gz-dtb
+        # 3. Lihat file apa saja yang dihasilkan di folder boot
+        echo "=== ISI FOLDER BOOT ==="
+        ls -la out/arch/arm/boot/
+
+    - name: Gabungin Kernel + DTB
+      run: |
+        export ARCH=arm
+        export SUBARCH=arm
+        export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
+        
+        # Cari file kernel (biasanya zImage atau Image)
+        KERNEL_FILE=$(find out/arch/arm/boot/ -maxdepth 1 -type f \( -name "zImage" -o -name "Image" -o -name "Image.gz" \) | head -n 1)
+        
+        if [ -z "$KERNEL_FILE" ]; then
+          echo "❌ File kernel tidak ditemukan! Cek log di atas."
+          exit 1
+        fi
+        
+        echo "✅ Kernel ditemukan: $KERNEL_FILE"
+        
+        # Gabungin dengan DTB
+        cat $KERNEL_FILE out/arch/arm/boot/dts/*.dtb > out/arch/arm/boot/Image.gz-dtb
+        
+        # Bikin zip
+        cd out/arch/arm/boot/
+        zip Image.gz-dtb.zip Image.gz-dtb
 
     - name: Upload Kernel Image
       uses: actions/upload-artifact@v4
       with:
         name: Image.gz-dtb
-        path: out/arch/arm/boot/Image.gz-dtb
+        path: out/arch/arm/boot/Image.gz-dtb.zip
