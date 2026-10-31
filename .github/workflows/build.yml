@@ -18,15 +18,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32readline-dev lib32z1-dev libelf-dev libncurses-dev libsdl1.2-dev libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
 
-    - name: Download Toolchain (GCC 32-bit)
+    - name: Download Toolchain
       run: |
-        git clone --depth=1 https://github.com/kdrag0n/arm-eabi-4.14 toolchain
+        git clone --depth=1 https://github.com/arter97/arm-linux-gnueabi-4.9 toolchain
 
     - name: Build Kernel
       run: |
         export ARCH=arm
         export SUBARCH=arm
-        export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-eabi-
+        export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-gnueabi-
         make O=out angelica_defconfig
         make O=out -j$(nproc)
 
