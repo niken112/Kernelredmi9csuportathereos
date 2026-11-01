@@ -1,4 +1,4 @@
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 
 obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o

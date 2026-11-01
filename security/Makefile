@@ -2,7 +2,7 @@
 # Makefile for the kernel security code
 #
 
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 
 obj-$(CONFIG_KEYS)			+= keys/

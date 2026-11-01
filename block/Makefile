@@ -2,7 +2,7 @@
 # Makefile for the kernel block layer
 #
 
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 
 obj-$(CONFIG_BLOCK) := bio.o elevator.o blk-core.o blk-tag.o blk-sysfs.o \

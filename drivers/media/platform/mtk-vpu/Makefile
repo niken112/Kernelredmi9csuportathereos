@@ -1,4 +1,4 @@
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += 
 
 mtk-vpu-y += mtk_vpu.o
 

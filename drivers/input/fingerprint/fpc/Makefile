@@ -7,3 +7,4 @@ subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 
 obj-$(CONFIG_FPC_FINGERPRINT)	+= mtk_spi.o
 
+CFLAGS_mtk_spi.o += -Wno-maybe-uninitialized
