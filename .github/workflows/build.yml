@@ -26,35 +26,38 @@ jobs:
       run: |
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 toolchain
 
-    - name: Build Kernel (Coba Semua Target)
+    - name: Build Kernel
+      shell: bash
       run: |
+        set -eo pipefail
         export ARCH=arm
         export SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
-        
         make O=out angelica_defconfig
-        
-        echo "=== Mencoba build zImage-dtb ==="
-        make O=out -j$(nproc) zImage-dtb 2>&1 | tee build_zImage-dtb.log || true
-        
-        echo "=== Mencoba build Image-dtb ==="
-        make O=out -j$(nproc) Image-dtb 2>&1 | tee build_Image-dtb.log || true
-        
-        echo "=== Mencoba build zImage ==="
-        make O=out -j$(nproc) zImage 2>&1 | tee build_zImage.log || true
-        
-        echo "=== Mencoba build Image ==="
-        make O=out -j$(nproc) Image 2>&1 | tee build_Image.log || true
+        make O=out -j$(nproc) zImage dtbs 2>&1 | tee build.log
 
-    - name: CEK ISI FOLDER BOOT
+    - name: Tampilkan Error
+      if: failure()
       run: |
-        echo "=== ISI FOLDER out/arch/arm/boot/ ==="
+        grep -nE "error:|Error [0-9]|No such file|undefined reference|multiple definition" build.log | head -40 || true
+
+    - name: Cek Isi Folder Boot
+      run: |
         ls -la out/arch/arm/boot/
-        echo "=== CARI FILE KERNEL (>1MB) ==="
         find out/arch/arm/boot/ -maxdepth 2 -type f -size +1M -exec ls -lh {} \;
 
-    - name: Upload Semua File Boot
+    - name: Upload Kernel
       uses: actions/upload-artifact@v4
       with:
-        name: All-Boot-Files
-        path: out/arch/arm/boot/*
+        name: Kernel-Files
+        if-no-files-found: warn
+        path: |
+          out/arch/arm/boot/zImage
+          out/arch/arm/boot/dts/**/*.dtb
+
+    - name: Upload Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
