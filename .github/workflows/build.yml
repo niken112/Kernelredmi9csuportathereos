@@ -26,21 +26,32 @@ jobs:
       run: |
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 toolchain
 
-    - name: Build Kernel
+    - name: Build Kernel (Coba Semua Target)
       run: |
         export ARCH=arm
         export SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
         
         make O=out angelica_defconfig
-        make O=out -j$(nproc) 2>&1 | tee build.log || (echo "=== ERROR BUILD ===" && tail -n 50 build.log && exit 1)
+        
+        echo "=== Mencoba build zImage-dtb ==="
+        make O=out -j$(nproc) zImage-dtb 2>&1 | tee build_zImage-dtb.log || true
+        
+        echo "=== Mencoba build Image-dtb ==="
+        make O=out -j$(nproc) Image-dtb 2>&1 | tee build_Image-dtb.log || true
+        
+        echo "=== Mencoba build zImage ==="
+        make O=out -j$(nproc) zImage 2>&1 | tee build_zImage.log || true
+        
+        echo "=== Mencoba build Image ==="
+        make O=out -j$(nproc) Image 2>&1 | tee build_Image.log || true
 
-    - name: CEK ISI FOLDER BOOT (DEBUG)
+    - name: CEK ISI FOLDER BOOT
       run: |
         echo "=== ISI FOLDER out/arch/arm/boot/ ==="
         ls -la out/arch/arm/boot/
-        echo "=== ISI SUBFOLDER (REKURSIF) ==="
-        find out/arch/arm/boot/ -maxdepth 2 -type f | head -n 50
+        echo "=== CARI FILE KERNEL (>1MB) ==="
+        find out/arch/arm/boot/ -maxdepth 2 -type f -size +1M -exec ls -lh {} \;
 
     - name: Upload Semua File Boot
       uses: actions/upload-artifact@v4
