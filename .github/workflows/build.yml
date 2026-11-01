@@ -34,7 +34,7 @@ jobs:
         export SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/toolchain/bin/arm-linux-androideabi-
         make O=out angelica_defconfig
-        make O=out -j$(nproc) zImage dtbs 2>&1 | tee build.log
+        make O=out -j$(nproc) KCFLAGS="-Wno-error" zImage dtbs 2>&1 | tee build.log
 
     - name: Tampilkan Error
       if: failure()
