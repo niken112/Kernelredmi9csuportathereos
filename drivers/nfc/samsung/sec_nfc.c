@@ -570,7 +570,7 @@ static long sec_nfc_compat_ioctl(struct file *filp, unsigned int cmd, unsigned l
 {
 	long ret = 0;
 
-	ret = sec_nfc_ioctl(filp, cmd, arg);
+	ret = sec_nfc_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
 
 	return ret;
 }
