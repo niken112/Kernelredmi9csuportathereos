@@ -1,0 +1,45 @@
+name: Build Atheros modules
+on:
+  workflow_dispatch:
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+      options: --user root
+    steps:
+    - uses: actions/checkout@v4
+    - name: Deps
+      run: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git libssl-dev libncurses5-dev liblz4-tool lzop rsync zip zlib1g-dev python2 python3 python-is-python2 cpio xz-utils kmod
+    - name: Toolchains
+      run: |
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 tc64
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 tc32
+    - name: Build modules
+      run: |
+        export ARCH=arm64 SUBARCH=arm64
+        export CROSS_COMPILE=$(pwd)/tc64/bin/aarch64-linux-android-
+        export CROSS_COMPILE_ARM32=$(pwd)/tc32/bin/arm-linux-androideabi-
+        make O=out angelica_mod_defconfig
+        grep -E "^CONFIG_(MAC80211|ATH9K_HTC|ATH9K_HW|ATH_COMMON|LOCALVERSION)" out/.config
+        make -k O=out -j$(nproc) modules 2>&1 | tee build.log || true
+        mkdir -p mods
+        find out -name '*.ko' -exec cp {} mods/ \;
+        ls -l mods
+        for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
+        test -s mods/ath9k_htc.ko
+    - uses: actions/upload-artifact@v4
+      with:
+        name: modules
+        path: mods/
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: modules-log
+        path: build.log
