@@ -25,7 +25,14 @@ jobs:
         export CROSS_COMPILE=$(pwd)/tc32/bin/arm-linux-androideabi-
         
         make O=out angelica_defconfig
-        scripts/config --file out/.config -e MAC80211 -e ATH9K_HTC -e ATH9K_HW -e ATH_COMMON
+        
+        # Matiin driver yang bikin error karena file-nya nggak ada di source
+        scripts/config --file out/.config \
+          -d CUSTOM_KERNEL_LCM \
+          -d MTK_LCM_HX83012D_VDO_HDP_BOE_TONGXINGDA \
+          -d MTK_LCM_NT36525B_VDO_HDP_BOE_DIJING \
+          -d MTK_LCM_FT8006S_VDO_HDP_BOE_HELITAI \
+          -e MAC80211 -e ATH9K_HTC -e ATH9K_HW -e ATH_COMMON
         
         make -k O=out -j$(nproc) modules 2>&1 | tee build.log || true
         
