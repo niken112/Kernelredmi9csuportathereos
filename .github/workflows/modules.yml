@@ -38,11 +38,12 @@ jobs:
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_IMGSENSOR ""
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_LCM ""
         
+        # NYALAIN SPECTRAL DAN DEBUGFS BIAR COCOK
         scripts/config --file out/.config \
           -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON \
-          -d ATH9K_COMMON_SPECTRAL \
-          -d ATH9K_HTC_DEBUGFS \
-          -d ATH9K_DEBUGFS
+          -e ATH9K_COMMON_SPECTRAL \
+          -e ATH9K_HTC_DEBUGFS \
+          -e ATH9K_DEBUGFS
 
         yes "" | make O=out oldconfig > /dev/null 2>&1 || true
 
