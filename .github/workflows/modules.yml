@@ -101,7 +101,8 @@ jobs:
                 print("\n");
                 return;
             }
-            long res = sys3(SYS_finit_module, fd, 0, MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC);
+            // PERHATIKAN: Argumen kedua diubah jadi (long)"" (string kosong)
+            long res = sys3(SYS_finit_module, fd, (long)"", MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC);
             if (res < 0) {
                 print("[-] load failed: ");
                 print(path);
