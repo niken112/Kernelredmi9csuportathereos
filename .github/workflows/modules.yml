@@ -23,23 +23,26 @@ jobs:
       run: |
         export ARCH=arm SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/tc32/bin/arm-linux-androideabi-
-        
+
         make O=out angelica_defconfig
-        
+
         # Matiin driver yang bikin error karena file-nya nggak ada di source
         scripts/config --file out/.config \
           -d CUSTOM_KERNEL_LCM \
           -d MTK_LCM_HX83012D_VDO_HDP_BOE_TONGXINGDA \
           -d MTK_LCM_NT36525B_VDO_HDP_BOE_DIJING \
           -d MTK_LCM_FT8006S_VDO_HDP_BOE_HELITAI \
+          -d ATH9K_COMMON_SPECTRAL \
           -e MAC80211 -e ATH9K_HTC -e ATH9K_HW -e ATH_COMMON
-        
+
+        yes "" | make O=out oldconfig
+
         make -k O=out -j$(nproc) modules 2>&1 | tee build.log || true
-        
+
         mkdir -p mods
         find out -name '*.ko' -exec cp {} mods/ \;
         ls -l mods
-        
+
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
     - uses: actions/upload-artifact@v4
