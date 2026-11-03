@@ -1,4 +1,4 @@
-name: Build Atheros modules (ARM 32-bit)
+name: Build Atheros modules (AArch64)
 on:
   workflow_dispatch:
 defaults:
@@ -18,43 +18,39 @@ jobs:
         DEBIAN_FRONTEND=noninteractive apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git libssl-dev libncurses5-dev liblz4-tool lzop rsync zip zlib1g-dev python2 python3 python-is-python2 cpio xz-utils kmod
     - name: Toolchains
       run: |
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 tc64
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 tc32
     - name: Build modules
       run: |
-        export ARCH=arm SUBARCH=arm
-        export CROSS_COMPILE=$(pwd)/tc32/bin/arm-linux-androideabi-
+        export ARCH=arm64 SUBARCH=arm64
+        export CROSS_COMPILE=$(pwd)/tc64/bin/aarch64-linux-android-
+        export CROSS_COMPILE_ARM32=$(pwd)/tc32/bin/arm-linux-androideabi-
         
-        # 1. Load config asli
         make O=out angelica_defconfig
         
-        # 2. Nyalain modul & samain versi kernel
         scripts/config --file out/.config -e MODULES -e MODULE_UNLOAD -e MODVERSIONS
         scripts/config --file out/.config --set-str LOCALVERSION "-perf-g726745c074e7"
         
-        # 3. MATIIN SEMUA DRIVER YANG FILE-NYA HILANG (Kamera & Layar)
+        # Matiin driver bermasalah biar build sukses
         scripts/config --file out/.config -d MTK_IMGSENSOR
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_IMGSENSOR ""
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_LCM ""
         
-        # 4. Set Atheros jadi Modul (-m)
         scripts/config --file out/.config \
           -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON
 
-        # 5. Rapihin config
         yes "" | make O=out oldconfig > /dev/null 2>&1 || true
 
-        # 6. Build dan tangkap error paling bawah
         if ! make -k O=out -j$(nproc) modules > build.log 2>&1; then
-          echo "❌ ================= ERROR TERJADI ================= ❌"
+          echo "❌ ERROR TERJADI:"
           tail -n 20 build.log
-          echo "======================================================"
           exit 1
         fi
 
-        # 7. Kumpulin .ko
         mkdir -p mods
         find out -name '*.ko' -exec cp {} mods/ \;
         ls -l mods
+        
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
 
