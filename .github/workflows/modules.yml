@@ -26,7 +26,6 @@ jobs:
 
         make O=out angelica_defconfig
 
-        # Matiin driver yang bikin error karena file-nya nggak ada di source
         scripts/config --file out/.config \
           -d CUSTOM_KERNEL_LCM \
           -d MTK_LCM_HX83012D_VDO_HDP_BOE_TONGXINGDA \
@@ -37,7 +36,15 @@ jobs:
 
         yes "" | make O=out oldconfig 2>&1 | tee oldconfig.log || true
 
-        make -k O=out -j$(nproc) modules 2>&1 | tee build.log || true
+        # Prepare kernel headers/symbols dulu (wajib sebelum build modul spesifik)
+        make O=out -j$(nproc) modules_prepare 2>&1 | tee prepare.log || true
+
+        # Build CUMA folder yang kita butuhkan, skip semua driver lain yang errornya banyak
+        make -k O=out -j$(nproc) \
+          net/mac80211/ \
+          drivers/net/wireless/ath/ \
+          drivers/net/wireless/ath/ath9k/ \
+          2>&1 | tee build.log || true
 
         mkdir -p mods
         find out -name '*.ko' -exec cp {} mods/ \;
@@ -60,3 +67,8 @@ jobs:
       with:
         name: oldconfig-log
         path: oldconfig.log
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: prepare-log
+        path: prepare.log
