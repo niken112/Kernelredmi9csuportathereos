@@ -22,7 +22,6 @@ jobs:
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 tc32
     - name: Build modules
       run: |
-        # Pindahkan config ke folder arm64
         mkdir -p arch/arm64/configs
         cp arch/arm/configs/angelica_defconfig arch/arm64/configs/angelica_defconfig
         
@@ -56,6 +55,37 @@ jobs:
         
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
+
+    - name: Compile force_insmod for AArch64
+      run: |
+        cat << 'CEOF' > force_insmod.c
+        #include <stdio.h>
+        #include <fcntl.h>
+        #include <unistd.h>
+        #include <sys/syscall.h>
+        #include <errno.h>
+        #include <string.h>
+
+        #ifndef __NR_finit_module
+        #define __NR_finit_module 313
+        #endif
+
+        #define MODULE_INIT_IGNORE_MODVERSIONS 1
+        #define MODULE_INIT_IGNORE_VERMAGIC 2
+
+        int main(int argc, char **argv) {
+            if (argc < 2) return 1;
+            int fd = open(argv[1], O_RDONLY | O_CLOEXEC);
+            if (fd < 0) { perror("open"); return 1; }
+            int res = syscall(__NR_finit_module, fd, "", MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC);
+            if (res < 0) { perror("finit_module"); close(fd); return 1; }
+            printf("✅ Module %s loaded successfully!\n", argv[1]);
+            close(fd);
+            return 0;
+        }
+        CEOF
+        $(pwd)/tc64/bin/aarch64-linux-android-gcc -static force_insmod.c -o force_insmod
+        cp force_insmod mods/
 
     - uses: actions/upload-artifact@v4
       with:
