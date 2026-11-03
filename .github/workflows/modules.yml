@@ -1,4 +1,5 @@
-name: Build Atheros modules
+
+name: Build Atheros modules (ARM 32-bit)
 on:
   workflow_dispatch:
 defaults:
@@ -23,33 +24,35 @@ jobs:
       run: |
         export ARCH=arm SUBARCH=arm
         export CROSS_COMPILE=$(pwd)/tc32/bin/arm-linux-androideabi-
-
+        
+        # Pakai config asli (yang udah kita ekstrak)
         make O=out angelica_defconfig
-
+        
+        # Paksa nyalain fitur modul
+        scripts/config --file out/.config -e MODULES -e MODULE_UNLOAD -e MODVERSIONS
+        
+        # Samain nama versi kernel biar vermagic cocok
+        scripts/config --file out/.config --set-str LOCALVERSION "-perf-g726745c074e7"
+        
+        # Matiin driver yg bikin error, UBAH ATHEROS JADI 'm' (Modul)
         scripts/config --file out/.config \
           -d CUSTOM_KERNEL_LCM \
           -d MTK_LCM_HX83012D_VDO_HDP_BOE_TONGXINGDA \
           -d MTK_LCM_NT36525B_VDO_HDP_BOE_DIJING \
           -d MTK_LCM_FT8006S_VDO_HDP_BOE_HELITAI \
           -d ATH9K_COMMON_SPECTRAL \
-          -e MAC80211 -e ATH9K_HTC -e ATH9K_HW -e ATH_COMMON
+          -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON
 
-        yes "" | make O=out oldconfig 2>&1 | tee oldconfig.log || true
+        # Jalanin oldconfig otomatis
+        yes "" | make O=out oldconfig
 
-        # Prepare kernel headers/symbols dulu (wajib sebelum build modul spesifik)
-        make O=out -j$(nproc) modules_prepare 2>&1 | tee prepare.log || true
-
-        # Build CUMA folder yang kita butuhkan, skip semua driver lain yang errornya banyak
-        make -k O=out -j$(nproc) \
-          net/mac80211/ \
-          drivers/net/wireless/ath/ \
-          drivers/net/wireless/ath/ath9k/ \
-          2>&1 | tee build.log || true
-
+        # Build modul
+        make -k O=out -j$(nproc) modules 2>&1 | tee build.log || true
+        
         mkdir -p mods
         find out -name '*.ko' -exec cp {} mods/ \;
         ls -l mods
-
+        
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
     - uses: actions/upload-artifact@v4
@@ -62,13 +65,3 @@ jobs:
       with:
         name: modules-log
         path: build.log
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: oldconfig-log
-        path: oldconfig.log
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: prepare-log
-        path: prepare.log
