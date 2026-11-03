@@ -22,6 +22,10 @@ jobs:
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 tc32
     - name: Build modules
       run: |
+        # Pindahkan config ke folder arm64
+        mkdir -p arch/arm64/configs
+        cp arch/arm/configs/angelica_defconfig arch/arm64/configs/angelica_defconfig
+        
         export ARCH=arm64 SUBARCH=arm64
         export CROSS_COMPILE=$(pwd)/tc64/bin/aarch64-linux-android-
         export CROSS_COMPILE_ARM32=$(pwd)/tc32/bin/arm-linux-androideabi-
@@ -31,7 +35,6 @@ jobs:
         scripts/config --file out/.config -e MODULES -e MODULE_UNLOAD -e MODVERSIONS
         scripts/config --file out/.config --set-str LOCALVERSION "-perf-g726745c074e7"
         
-        # Matiin driver bermasalah biar build sukses
         scripts/config --file out/.config -d MTK_IMGSENSOR
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_IMGSENSOR ""
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_LCM ""
