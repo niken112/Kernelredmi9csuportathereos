@@ -42,7 +42,7 @@ jobs:
         echo "=== cek Atheros di .config ==="
         grep -E "^CONFIG_(MAC80211|ATH9K_HTC|RFKILL)=" out/.config
 
-        make O=out -j$(nproc) Image.gz 2>&1 | tee build.log || { echo "=== ERROR BUILD ==="; tail -n 60 build.log; exit 1; }
+        make O=out -j$(nproc) Image.gz 2>&1 | tee build.log || { echo "=== ERROR BUILD ==="; grep -nE "error:|Error 1|undefined reference|No rule|fatal" build.log | grep -v Wignored | head -40; exit 1; }
 
         ls -lh out/arch/arm64/boot/
         test -s out/arch/arm64/boot/Image.gz
