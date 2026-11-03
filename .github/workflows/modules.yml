@@ -27,35 +27,34 @@ jobs:
         # 1. Load config asli
         make O=out angelica_defconfig
         
-        # 2. Paksa nyalain fitur modul & samain versi kernel
+        # 2. Nyalain modul & samain versi kernel
         scripts/config --file out/.config -e MODULES -e MODULE_UNLOAD -e MODVERSIONS
         scripts/config --file out/.config --set-str LOCALVERSION "-perf-g726745c074e7"
         
-        # 3. Benerin LCM (jangan dihapus, tapi dikosongin string-nya biar Kconfig nggak nanya)
+        # 3. MATIIN SEMUA DRIVER YANG FILE-NYA HILANG (Kamera & Layar)
+        scripts/config --file out/.config -d MTK_IMGSENSOR
+        scripts/config --file out/.config --set-str CUSTOM_KERNEL_IMGSENSOR ""
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_LCM ""
         
-        # 4. Set driver Atheros jadi Modul (-m)
+        # 4. Set Atheros jadi Modul (-m)
         scripts/config --file out/.config \
           -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON
 
-        # 5. Rapihin dependensi (abaikan error 141 kalau ada)
+        # 5. Rapihin config
         yes "" | make O=out oldconfig > /dev/null 2>&1 || true
 
-        # 6. Eksekusi Build & Tangkap Error (Khusus buat lu biar gampang baca)
-        echo "=== MULAI BUILD ==="
+        # 6. Build dan tangkap error paling bawah
         if ! make -k O=out -j$(nproc) modules > build.log 2>&1; then
-          echo "❌ ERROR TERJADI! INI DIA PESAN ERRORNYA:"
-          grep -iE "error:|fatal error:|No rule to make target" build.log | head -n 15
-          echo "=========================================="
+          echo "❌ ================= ERROR TERJADI ================= ❌"
+          tail -n 20 build.log
+          echo "======================================================"
           exit 1
         fi
 
-        # 7. Kumpulin file .ko
+        # 7. Kumpulin .ko
         mkdir -p mods
         find out -name '*.ko' -exec cp {} mods/ \;
         ls -l mods
-        
-        # 8. Cek vermagic
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
 
