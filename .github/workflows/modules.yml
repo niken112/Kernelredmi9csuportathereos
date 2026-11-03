@@ -56,35 +56,72 @@ jobs:
         for f in mods/*.ko; do echo "$f"; grep -a -o 'vermagic=[^[:cntrl:]]*' "$f" | head -1; done
         test -s mods/ath9k_htc.ko
 
-    - name: Compile force_insmod for AArch64
+    - name: Compile force_insmod (Bare-Metal)
       run: |
         cat << 'CEOF' > force_insmod.c
-        #include <stdio.h>
-        #include <fcntl.h>
-        #include <unistd.h>
-        #include <sys/syscall.h>
-        #include <errno.h>
-        #include <string.h>
-
-        #ifndef __NR_finit_module
-        #define __NR_finit_module 313
-        #endif
-
+        #define SYS_write 64
+        #define SYS_openat 56
+        #define SYS_finit_module 313
+        #define SYS_exit 93
+        #define AT_FDCWD -100
+        #define O_RDONLY 0
         #define MODULE_INIT_IGNORE_MODVERSIONS 1
         #define MODULE_INIT_IGNORE_VERMAGIC 2
 
-        int main(int argc, char **argv) {
-            if (argc < 2) return 1;
-            int fd = open(argv[1], O_RDONLY | O_CLOEXEC);
-            if (fd < 0) { perror("open"); return 1; }
-            int res = syscall(__NR_finit_module, fd, "", MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC);
-            if (res < 0) { perror("finit_module"); close(fd); return 1; }
-            printf("✅ Module %s loaded successfully!\n", argv[1]);
-            close(fd);
-            return 0;
+        long sys3(long n, long a, long b, long c) {
+            register long x8 __asm__("x8") = n;
+            register long x0 __asm__("x0") = a;
+            register long x1 __asm__("x1") = b;
+            register long x2 __asm__("x2") = c;
+            __asm__ __volatile__("svc 0" : "+r"(x0) : "r"(x8), "r"(x1), "r"(x2) : "memory");
+            return x0;
+        }
+
+        long sys4(long n, long a, long b, long c, long d) {
+            register long x8 __asm__("x8") = n;
+            register long x0 __asm__("x0") = a;
+            register long x1 __asm__("x1") = b;
+            register long x2 __asm__("x2") = c;
+            register long x3 __asm__("x3") = d;
+            __asm__ __volatile__("svc 0" : "+r"(x0) : "r"(x8), "r"(x1), "r"(x2), "r"(x3) : "memory");
+            return x0;
+        }
+
+        void print(const char *s) {
+            int len = 0;
+            while (s[len]) len++;
+            sys3(SYS_write, 1, (long)s, len);
+        }
+
+        void load_mod(const char *path) {
+            long fd = sys4(SYS_openat, AT_FDCWD, (long)path, O_RDONLY, 0);
+            if (fd < 0) {
+                print("[-] open failed: ");
+                print(path);
+                print("\n");
+                return;
+            }
+            long res = sys3(SYS_finit_module, fd, 0, MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC);
+            if (res < 0) {
+                print("[-] load failed: ");
+                print(path);
+                print("\n");
+                return;
+            }
+            print("[+] loaded: ");
+            print(path);
+            print("\n");
+        }
+
+        void _start() {
+            load_mod("/data/local/tmp/modules/ath.ko");
+            load_mod("/data/local/tmp/modules/ath9k_hw.ko");
+            load_mod("/data/local/tmp/modules/ath9k_common.ko");
+            load_mod("/data/local/tmp/modules/ath9k_htc.ko");
+            sys3(SYS_exit, 0, 0, 0);
         }
         CEOF
-        $(pwd)/tc64/bin/aarch64-linux-android-gcc -static force_insmod.c -o force_insmod
+        $(pwd)/tc64/bin/aarch64-linux-android-gcc -nostdlib -no-pie -static -Wl,-e,_start force_insmod.c -o force_insmod
         cp force_insmod mods/
 
     - uses: actions/upload-artifact@v4
