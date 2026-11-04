@@ -24,32 +24,31 @@ jobs:
       run: |
         mkdir -p arch/arm64/configs
         cp arch/arm/configs/angelica_defconfig arch/arm64/configs/angelica_defconfig
-        
+
         export ARCH=arm64 SUBARCH=arm64
         export CROSS_COMPILE=$(pwd)/tc64/bin/aarch64-linux-android-
         export CROSS_COMPILE_ARM32=$(pwd)/tc32/bin/arm-linux-androideabi-
-        
+
         make O=out angelica_defconfig
-        
-        # Pakai scripts/config buat dasar
+
         scripts/config --file out/.config -e MODULES -e MODULE_UNLOAD -e MODVERSIONS
         scripts/config --file out/.config --set-str LOCALVERSION "-perf-g726745c074e7"
         scripts/config --file out/.config -d MTK_IMGSENSOR
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_IMGSENSOR ""
         scripts/config --file out/.config --set-str CUSTOM_KERNEL_LCM ""
-        scripts/config --file out/.config -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON
-        
-        # PAKSA SPECTRAL NYALA PAKAI SED (Biar gak bisa ditolak oldconfig)
-        sed -i 's/.*CONFIG_ATH9K_COMMON_SPECTRAL.*/CONFIG_ATH9K_COMMON_SPECTRAL=y/' out/.config
-        sed -i 's/.*CONFIG_ATH9K_HTC_DEBUGFS.*/CONFIG_ATH9K_HTC_DEBUGFS=y/' out/.config
-        sed -i 's/.*CONFIG_ATH9K_DEBUGFS.*/CONFIG_ATH9K_DEBUGFS=y/' out/.config
 
-        # Jalanin oldconfig (tapi kita udah paksa sed di atas)
+        scripts/config --file out/.config \
+          -m MAC80211 -m ATH9K_HTC -m ATH9K_HW -m ATH_COMMON \
+          -d ATH9K_COMMON_SPECTRAL \
+          -d ATH9K_HTC_DEBUGFS \
+          -d ATH9K_DEBUGFS \
+          -d ATH9K_COMMON_DEBUG \
+          -d ATH_DEBUG
+
         yes "" | make O=out oldconfig > /dev/null 2>&1 || true
 
-        # CEK LOG SEBELUM BUILD (Biar lu bisa liat di GitHub)
-        echo "=== STATUS CONFIG ATHEROS ==="
-        grep "ATH9K" out/.config
+        echo "=== STATUS CONFIG ATHEROS (harus semua kosong/n) ==="
+        grep -E "ATH9K_COMMON_SPECTRAL|ATH9K_HTC_DEBUGFS|ATH9K_DEBUGFS|ATH_DEBUG" out/.config || echo "confirmed disabled"
 
         if ! make -k O=out -j$(nproc) modules > build.log 2>&1; then
           echo "❌ ERROR TERJADI:"
